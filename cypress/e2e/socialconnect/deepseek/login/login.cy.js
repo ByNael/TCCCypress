@@ -1,0 +1,36 @@
+describe('Login', () => {
+  beforeEach(() => {
+    cy.visit('https://social-connect-donheshanthaka.netlify.app/');
+    // Aguarda o carregamento da página de login
+    cy.contains('Welcome to Social Connect').should('be.visible');
+  });
+
+  it('Realizar login com credenciais válidas', () => {
+    // Preenche o e-mail cadastrado
+    cy.get('input[name="email"]').type('test@gmail.com');
+    // Preenche a senha correspondente
+    cy.get('input[name="password"]').type('password@123');
+    // Realiza o login
+    cy.get('button[type="submit"]').click();
+    
+    // O sistema deve autenticar o usuário e redirecioná-lo para a página inicial
+    // Aguarda o redirecionamento e a apresentação do feed
+    cy.url().should('include', '/home', { timeout: 20000 });
+  });
+
+  it('Realizar login com credenciais inválidas', () => {
+    // Preenche um e-mail cadastrado
+    cy.get('input[name="email"]').type('test@gmail.com');
+    // Deixa o campo de senha vazio para simular credenciais inválidas (conforme cenário)
+    // Realiza o login
+    cy.get('button[type="submit"]').click();
+    
+    // O sistema não deve autenticar o usuário
+    // Deve apresentar uma mensagem de erro no input de password com o texto "required"
+    cy.get('input[name="password"]')
+      .parent()
+      .parent()
+      .contains('required')
+      .should('be.visible');
+  });
+});
