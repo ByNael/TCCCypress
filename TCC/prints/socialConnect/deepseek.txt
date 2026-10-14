@@ -77,3 +77,126 @@ describe('Login', () => {
 });
 
 post saida
+describe('Criação de Publicação', () => {
+  beforeEach(() => {
+    // Realiza o login antes de cada teste para garantir que o usuário está autenticado
+    cy.visit('/');
+    cy.get('input[name="email"]').type('test@gmail.com');
+    cy.get('input[name="password"]').type('password@123');
+    cy.get('button[type="submit"]').click();
+    // Aguarda a página inicial carregar
+    cy.contains('Upcoming Events').should('be.visible');
+  });
+
+  it('Criar uma nova publicação', () => {
+    const postContent = 'teste texto para publicação';
+    const imageName = 'Captura de tela 2025-06-06 145533.png';
+
+    // Acessa a funcionalidade de criação de publicação e informa o conteúdo
+    cy.get('input[placeholder="Share your memory with a caption..."]')
+      .type(postContent);
+
+    // Seleciona uma imagem válida
+    // O input de arquivo está oculto, então usamos { force: true } ou selecionamos diretamente
+    cy.get('input[type="file"]').selectFile({
+      contents: Cypress.Buffer.from('fake image content'),
+      fileName: imageName,
+      mimeType: 'image/png'
+    }, { force: true });
+
+    // O sistema deve apresentar os dados da publicação para confirmação
+    // Verifica se o texto digitado aparece no campo
+    cy.get('input[placeholder="Share your memory with a caption..."]')
+      .should('have.value', postContent);
+
+    // Verifica se o nome do arquivo da imagem é exibido
+    cy.contains(imageName).should('be.visible');
+  });
+
+  it('Publicar conteúdo criado', () => {
+    const postContent = 'teste texto para publicação';
+    const imageName = 'Captura de tela 2025-06-06 145533.png';
+
+    // Preenche a publicação
+    cy.get('input[placeholder="Share your memory with a caption..."]')
+      .type(postContent);
+
+    cy.get('input[type="file"]').selectFile({
+      contents: Cypress.Buffer.from('fake image content'),
+      fileName: imageName,
+      mimeType: 'image/png'
+    }, { force: true });
+
+    // Confirma a publicação
+    cy.contains('button', 'POST').click();
+
+    // O sistema deve publicar o conteúdo e a nova publicação deve ser apresentada no feed
+    // Verifica se o conteúdo publicado corresponde ao texto informado
+    cy.contains(postContent).should('be.visible');
+
+    // Verifica se a imagem foi publicada (pelo alt ou pela presença no feed)
+    // Como a imagem é carregada dinamicamente, verificamos se há uma nova imagem com o alt "post"
+    cy.get('img[alt="post"]').should('have.length.greaterThan', 0);
+
+    // Opcional: aguardar um pouco para garantir que o feed foi atualizado
+    cy.wait(2000);
+    cy.contains(postContent).should('be.visible');
+  });
+});
+
+post corrigido (15 minutos)
+describe('Criação de Publicação', () => {
+  beforeEach(() => {
+    // Realiza o login antes de cada teste para garantir que o usuário está autenticado
+    cy.visit('https://social-connect-donheshanthaka.netlify.app/');
+    cy.get('input[name="email"]').type('test@gmail.com');
+    cy.get('input[name="password"]').type('password@123');
+    cy.get('button[type="submit"]').click();
+    // Aguarda a página inicial carregar
+    cy.contains('Upcoming Events', { timeout: 20000 }).should('be.visible');
+  });
+
+it('Criar uma nova publicação', () => {
+    const postContent = 'teste texto para publicação';
+
+    cy.get('input[placeholder="Share your memory with a caption..."]')
+      .type(postContent);
+
+    // Clica em "Image" para revelar a área de upload
+    cy.contains('Image').click();
+    cy.contains('Add Image Here').should('be.visible');
+
+    // Usa um arquivo real do diretório de fixtures
+    cy.get('input[type="file"]').selectFile('cypress/fixtures/imagem-teste.png', {
+      force: true
+    });
+
+    // Valida os dados para confirmação
+    cy.get('input[placeholder="Share your memory with a caption..."]')
+      .should('have.value', postContent);
+
+    // O nome exibido será o do arquivo do fixture
+    cy.contains('imagem-teste.png').should('be.visible');
+  });
+
+  it('Publicar conteúdo criado', () => {
+    const postContent = 'teste texto para publicação';
+
+    cy.get('input[placeholder="Share your memory with a caption..."]')
+      .type(postContent);
+
+    cy.contains('Image').click();
+    cy.contains('Add Image Here').should('be.visible');
+
+    cy.get('input[type="file"]').selectFile('cypress/fixtures/imagem-teste.png', {
+      force: true
+    });
+
+    // Clica em POST
+    cy.contains('button', 'POST').click();
+
+    // Verifica a publicação no feed
+    cy.contains(postContent).should('be.visible');
+    cy.get('img[alt="post"]').should('have.length.greaterThan', 0);
+  });
+});
