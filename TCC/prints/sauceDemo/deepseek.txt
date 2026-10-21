@@ -1,194 +1,213 @@
-carrinho saida
-describe('Gerenciamento do Carrinho - Sauce Demo', () => {
-  
-  Cypress.on('uncaught:exception', (err, runnable) => {
-    return false;
-  });
+saida login: 
+// cypress/e2e/login.cy.js
 
-  const produto = {
-    nome: 'Grey jacket',
-    nomeCompletoCarrinho: 'Grey jacket - Grey jacket',
-    preco: '£55.00',
-    idVariante: '611945025',
-    idProduto: 'grey-jacket'
-  };
+describe('Funcionalidade: Login de usuário', () => {
 
   beforeEach(() => {
-    cy.visit('https://sauce-demo.myshopify.com/');
+    // Visita a página de login antes de cada cenário
+    cy.visit('https://www.saucedemo.com/');
   });
 
-  it('Cenário: Adicionar produto disponível ao carrinho', () => {
-    cy.get('a[href*="/products/grey-jacket"]').first().click({ force: true });
+  it('Cenário: Realizar login com credenciais válidas', () => {
+    // Dado que o usuário está na página de login
+    // (Garantido pelo beforeEach)
 
-    cy.get('#add').click();
+    // Quando informa um username cadastrado
+    cy.get('[data-test="username"]').type('standard_user');
 
-    // O contador no topo deve mudar para (1)
-    cy.get('#cart-target-desktop, #cart-target-mobile')
-      .contains('(1)')
-      .should('be.visible');
+    // E informa a senha correspondente
+    cy.get('[data-test="password"]').type('secret_sauce');
+
+    // E realiza o login
+    cy.get('[data-test="login-button"]').click();
+
+    // Então o sistema deve autenticar o usuário
+    // E deve redirecioná-lo para a página inicial
+    // E deve apresentar o conteúdo da home de produtos
+    cy.url().should('include', '/inventory.html');
+    cy.get('.title').should('have.text', 'Products');
+    // Verifica se o container de produtos está visível para garantir o carregamento
+    cy.get('.inventory_list').should('be.visible');
   });
 
-  it('Cenário: Visualizar produto adicionado ao carrinho', () => {
-    // Pré-condição: Adicionar produto
-    cy.get('a[href*="/products/grey-jacket"]').first().click({ force: true });
-    cy.get('#add').click();
+  it('Cenário: Realizar login com credenciais inválidas (senha em branco)', () => {
+    // Dado que o usuário está na página de login
+    // (Garantido pelo beforeEach)
 
-    // Fecha o drawer se estiver aberto (para não interferir)
-    cy.get('body').then(($body) => {
-      if ($body.find('#drawer').length && $body.find('#drawer').is(':visible')) {
-        // Clica fora ou no toggle para fechar, se necessário
-        cy.get('.toggle-drawer').click({ force: true });
-      }
-    });
+    // Quando informa um username cadastrado
+    cy.get('[data-test="username"]').type('standard_user');
 
-    // Acessa a página completa do carrinho via link "My Cart" do header
-    // O link correto está no header com a classe .cart-target ou o href="/cart"
-    cy.get('a.cart-target[href="/cart"]')
-      .first()
-      .click({ force: true });
+    // E realiza o login (sem preencher a senha)
+    cy.get('[data-test="login-button"]').click();
 
-    // Valida que chegou na página do carrinho
-    cy.url({ timeout: 10000 }).should('include', '/cart');
-    cy.get('#cart').should('be.visible');
-    
-    // Valida o produto
-    cy.get('#cart .row').contains(produto.nomeCompletoCarrinho).should('be.visible');
-
-    // Valida a quantidade
-    cy.get(`input[name="updates[]"][id="updates_${produto.idVariante}"]`)
+    // Então o sistema não deve autenticar o usuário
+    // E deve apresentar uma mensagem de erro no input de password com o texto "Password is required"
+    cy.get('[data-test="error"]')
       .should('be.visible')
-      .and('have.value', '1');
-
-    // Valida o preço
-    cy.get('#cart .row').contains(produto.preco).should('be.visible');
+      .and('contain.text', 'Epic sadface: Password is required');
     
-    // Valida o total
-    cy.get('.cart.total').contains(`Total ${produto.preco}`).should('be.visible');
+    // Garante que permaneceu na página de login
+    cy.url().should('not.include', '/inventory.html');
   });
 
-  it('Cenário: Remover produto do carrinho', () => {
-    // Pré-condição: Adicionar produto
-    cy.get('a[href*="/products/grey-jacket"]').first().click({ force: true });
-    cy.get('#add').click();
-    
-    // Acessa a página do carrinho
-    cy.get('a.cart-target[href="/cart"]')
-      .first()
-      .click({ force: true });
-    
-    cy.url({ timeout: 10000 }).should('include', '/cart');
-
-    // Remove o produto
-    cy.get('#cart .row')
-      .find(`a[href*="quantity=0"]`)
-      .first()
-      .click({ force: true });
-
-    // Valida que o produto foi removido
-    cy.get('#cart').should('not.contain', produto.nomeCompletoCarrinho);
-    
-    // Valida mensagem de carrinho vazio
-    cy.contains('Your cart is empty').should('be.visible');
-    
-    // Valida que o total não contém mais o preço do produto
-    cy.get('.cart.total').should('not.contain', produto.preco);
-  });
 });
+saida home: 
 
-carrinho correção (30 minutos): 
-describe('Gerenciamento do Carrinho - Sauce Demo', () => {
-  
-  Cypress.on('uncaught:exception', (err, runnable) => {
-    return false;
-  });
+// cypress/e2e/cart.cy.js
 
-  const produto = {
-    nome: 'Grey jacket',
-    nomeCompletoCarrinho: 'Grey jacket - Grey jacket',
-    preco: '£55.00',
-    idVariante: '611945025',
-    idProduto: 'grey-jacket'
-  };
+describe('Funcionalidade: Carrinho de Compras', () => {
 
   beforeEach(() => {
-    cy.visit('https://sauce-demo.myshopify.com/');
+    // Realiza o login antes de cada cenário
+    cy.visit('https://www.saucedemo.com/');
+    cy.get('[data-test="username"]').type('standard_user');
+    cy.get('[data-test="password"]').type('secret_sauce');
+    cy.get('[data-test="login-button"]').click();
+    
+    // Garante que a página de produtos carregou
+    cy.url().should('include', '/inventory.html');
+    cy.get('[data-test="inventory-list"]').should('be.visible');
   });
 
-  it('Cenário: Adicionar produto disponível ao carrinho', () => {
-    cy.get('a[href*="/products/grey-jacket"]').first().click({ force: true });
+  it('Cenário 01: Adicionar produtos e checar carrinho', () => {
+    // E adicionou produtos válidos no carrinho clicando no botão "Add to cart"
+    // Utilizando seletores data-test específicos para evitar conflitos de XPath idênticos
+    cy.get('[data-test="add-to-cart-sauce-labs-backpack"]').click();
+    cy.get('[data-test="add-to-cart-sauce-labs-bike-light"]').click();
 
-    cy.get('#add').click();
+    // Valida que o contador do carrinho foi atualizado
+    cy.get('[data-test="shopping-cart-link"]').should('contain.text', '2');
 
-    // O contador no topo deve mudar para (1)
-    cy.get('#cart-target-desktop, #cart-target-mobile')
-      .contains('(1)')
-      .should('be.visible');
+    // E clicar no botão de carrinho para checar os produtos adicionados
+    cy.get('[data-test="shopping-cart-link"]').click();
+
+    // Então o sistema deve apresentar a página de carrinho com os itens escolhidos listados
+    cy.url().should('include', '/cart.html');
+    cy.get('[data-test="cart-list"]').should('be.visible');
+    
+    // Verifica se os itens específicos estão listados
+    cy.get('[data-test="inventory-item-name"]').should('have.length', 2);
+    cy.contains('[data-test="inventory-item-name"]', 'Sauce Labs Backpack').should('be.visible');
+    cy.contains('[data-test="inventory-item-name"]', 'Sauce Labs Bike Light').should('be.visible');
   });
 
-  it('Cenário: Visualizar produto adicionado ao carrinho', () => {
-    // Pré-condição: Adicionar produto
-    cy.get('a[href*="/products/grey-jacket"]').first().click({ force: true });
-    cy.get('#add').click();
+  it('Cenário 02: Remover produtos do carrinho', () => {
+    // E adicionou produtos válidos no carrinho
+    cy.get('[data-test="add-to-cart-sauce-labs-backpack"]').click();
+    cy.get('[data-test="add-to-cart-sauce-labs-bike-light"]').click();
 
-    cy.wait(5000)
-    // Fecha o drawer se estiver aberto (para não interferir)
-    cy.get('body').then(($body) => {
-      if ($body.find('#drawer').length && $body.find('#drawer').is(':visible')) {
-        // Clica fora ou no toggle para fechar, se necessário
-        cy.get('.toggle-drawer').click({ force: true });
-      }
-    });
+    // E clicar no botão "Remove" que aparece quando um produto está adicionado no carrinho
+    // O botão "Remove" tem o mesmo seletor data-test do "Add to cart", mas muda o texto
+    cy.get('[data-test="remove-sauce-labs-backpack"]').click();
+    cy.get('[data-test="remove-sauce-labs-bike-light"]').click();
 
-    // Acessa a página completa do carrinho via link "My Cart" do header
-    // O link correto está no header com a classe .cart-target ou o href="/cart"
-    cy.get('a.cart-target[href="/cart"]')
-      .first()
-      .click({ force: true });
+    // Valida que o carrinho está vazio (contador zerado/oculto)
+    cy.get('[data-test="shopping-cart-link"]').should('not.contain.text', '1');
 
-    // Valida que chegou na página do carrinho
-    cy.url({ timeout: 10000 }).should('include', '/cart');
-    cy.get('#cart').should('be.visible');
+    // E clica no botão de carrinho para checar os produtos
+    cy.get('[data-test="shopping-cart-link"]').click();
+
+    // Então o sistema deve apresentar a página de carrinho sem itens listados
+    cy.url().should('include', '/cart.html');
+    cy.get('[data-test="cart-list"]').should('be.visible');
     
-    // Valida o produto
-    cy.get('#cart .row').contains(produto.nomeCompletoCarrinho).should('be.visible');
-
-    // Valida a quantidade
-    cy.get(`input[name="updates[]"][id="updates_${produto.idVariante}"]`)
-      .should('be.visible')
-      .and('have.value', '1');
-
-    // Valida o preço
-    cy.get('#cart .row').contains(produto.preco).should('be.visible');
-    
-    // Valida o total
-    cy.get('.cart.total').contains(`Total ${produto.preco}`).should('be.visible');
+    // Verifica que a lista de itens está vazia
+    cy.get('[data-test="inventory-item"]').should('not.exist');
   });
 
-  it('Cenário: Remover produto do carrinho', () => {
-    // Pré-condição: Adicionar produto
-    cy.get('a[href*="/products/grey-jacket"]').first().click({ force: true });
-    cy.get('#add').click();
-    
-    cy.wait(5000)
-    // Acessa a página do carrinho
-    cy.get('a.cart-target[href="/cart"]')
-      .first()
-      .click({ force: true });
-    
-    cy.url({ timeout: 10000 }).should('include', '/cart');
-
-    // Remove o produto
-    cy.get('#cart .row')
-      .find(`a[href*="quantity=0"]`)
-      .first()
-      .click({ force: true });
-
-    // Valida que o produto foi removido
-    cy.get('#cart').should('not.contain', produto.nomeCompletoCarrinho);
-    
-    // Valida mensagem de carrinho vazio
-    cy.contains('It appears that your cart is currently empty!').should('be.visible');
-  });
 });
 
-aqui foi interessante pois ele encontrou um bug relacionado a velociadade que o usuário adicionar um produto no carrinho e clica no botão "checkout"
+saida checkout: 
+
+// cypress/e2e/checkout.cy.js
+
+describe('Funcionalidade: Checkout', () => {
+
+  beforeEach(() => {
+    // Realiza o login
+    cy.visit('https://www.saucedemo.com/');
+    cy.get('[data-test="username"]').type('standard_user');
+    cy.get('[data-test="password"]').type('secret_sauce');
+    cy.get('[data-test="login-button"]').click();
+
+    // Garante que está na página de produtos e adiciona um produto
+    cy.url().should('include', '/inventory.html');
+    cy.get('[data-test="add-to-cart-sauce-labs-backpack"]').click();
+    
+    // Valida que o item foi adicionado ao carrinho
+    cy.get('[data-test="shopping-cart-badge"]').should('have.text', '1');
+  });
+
+  it('Cenário 01: realizar checkout com sucesso', () => {
+    // Quando eu clico no ícone do carrinho no canto superior direito
+    cy.get('[data-test="shopping-cart-link"]').click();
+
+    // E clico no botão Checkout
+    cy.url().should('include', '/cart.html');
+    cy.get('[data-test="checkout"]').click();
+
+    // E preencho o campo "First Name" com "João"
+    cy.get('[data-test="firstName"]').type('João');
+
+    // E preencho o campo "Last Name" com "Silva"
+    cy.get('[data-test="lastName"]').type('Silva');
+
+    // E preencho o campo "Zip/Postal Code" com "12345-678"
+    cy.get('[data-test="postalCode"]').type('12345-678');
+
+    // E clico no botão "Continue"
+    cy.get('[data-test="continue"]').click();
+
+    // Então devo ser direcionado para a página "Checkout: Overview"
+    cy.url().should('include', '/checkout-step-two.html');
+    cy.get('[data-test="title"]').should('have.text', 'Checkout: Overview');
+
+    // E devo visualizar o valor total da compra
+    cy.get('[data-test="total-label"]').should('be.visible').and('contain.text', 'Total:');
+
+    // Quando eu clico no botão "Finish"
+    cy.get('[data-test="finish"]').click();
+
+    // Então devo ser direcionado para a página "Checkout: Complete!"
+    cy.url().should('include', '/checkout-complete.html');
+    cy.get('[data-test="title"]').should('have.text', 'Checkout: Complete!');
+
+    // E devo visualizar a mensagem "Thank you for your order!"
+    cy.get('.complete-header').should('have.text', 'Thank you for your order!');
+
+    // E o ícone do carrinho deve estar vazio (sem o contador numérico)
+    // O contador é o span com data-test="shopping-cart-badge", que deve não existir
+    cy.get('[data-test="shopping-cart-badge"]').should('not.exist');
+  });
+
+  it('Cenário 02: validação de campo obrigatório no formulário de checkout', () => {
+    // E cliquei no ícone do carrinho e no botão "Checkout"
+    cy.get('[data-test="shopping-cart-link"]').click();
+    cy.get('[data-test="checkout"]').click();
+
+    // Quando eu preencho o campo "First Name" com "Maria"
+    cy.get('[data-test="firstName"]').type('Maria');
+
+    // E preencho o campo "Last Name" com "Souza"
+    cy.get('[data-test="lastName"]').type('Souza');
+
+    // E deixo o campo "Zip/Postal Code" em branco
+    // (Não é necessário ação, apenas não preencher)
+
+    // E clico no botão "Continue"
+    cy.get('[data-test="continue"]').click();
+
+    // Então devo permanecer na página "Checkout: Your Information"
+    cy.url().should('include', '/checkout-step-one.html');
+    cy.get('[data-test="title"]').should('have.text', 'Checkout: Your Information');
+
+    // E devo visualizar uma mensagem de erro informando que o código postal é obrigatório
+    cy.get('[data-test="error"]')
+      .should('be.visible')
+      .and('contain.text', 'Error: Postal Code is required');
+
+    // E o formulário não deve ser enviado para a próxima etapa
+    // A URL já foi validada para garantir que não avançou
+  });
+
+});

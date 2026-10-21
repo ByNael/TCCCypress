@@ -1,135 +1,92 @@
-describe('Checkout - Finalização da Compra', () => {
-  
-  // Ignora erros não capturados de scripts de terceiros (Shopify, pixels, etc.)
-  Cypress.on('uncaught:exception', () => false);
+// cypress/e2e/checkout.cy.js
+
+describe('Funcionalidade: Checkout', () => {
 
   beforeEach(() => {
-    cy.visit('https://sauce-demo.myshopify.com/');
-    cy.get('a[href*="/products/grey-jacket"]').first().click({ force: true });
+    // Realiza o login
+    cy.visit('https://www.saucedemo.com/');
+    cy.get('[data-test="username"]').type('standard_user');
+    cy.get('[data-test="password"]').type('secret_sauce');
+    cy.get('[data-test="login-button"]').click();
 
-    cy.get('#add').click();
-
-    // O contador no topo deve mudar para (1)
-    cy.get('#cart-target-desktop, #cart-target-mobile')
-      .contains('(1)')
-      .should('be.visible');
-    // Visita a página do carrinho e prossegue para o checkout
-    cy.visit('https://sauce-demo.myshopify.com/cart');
+    // Garante que está na página de produtos e adiciona um produto
+    cy.url().should('include', '/inventory.html');
+    cy.get('[data-test="add-to-cart-sauce-labs-backpack"]').click();
     
-    // Clica no botão de Check Out para ir para a página de checkout
-    cy.get('input[name="checkout"]').click();
-    
-    // Aguarda a página de checkout carregar
-    cy.url({ timeout: 15000 }).should('include', '/checkouts/');
-    
-    // Aguarda o formulário de checkout estar visível
-    cy.get('#checkout-main', { timeout: 15000 }).should('be.visible');
+    // Valida que o item foi adicionado ao carrinho
+    cy.get('[data-test="shopping-cart-badge"]').should('have.text', '1');
   });
 
-  it('Cenário: Finalizar compra com dados válidos', () => {
-    // Preenche o e-mail (campo obrigatório de contato)
-    cy.get('#email').type('teste5234@teste.com');
+  it('Cenário 01: realizar checkout com sucesso', () => {
+    // Quando eu clico no ícone do carrinho no canto superior direito
+    cy.get('[data-test="shopping-cart-link"]').click();
 
-    // Preenche os dados de entrega (Delivery)
-    // Último nome (obrigatório)
-    cy.get('._7ozb2ub > [name="lastName"]').type('Silva');
-    
-    // CEP (obrigatório)
-    cy.get('._7ozb2ub > [name="postalCode"]').type('60000-000');
-    
-    // Rua (obrigatório)
-    
-    // Número do edifício (obrigatório)
-    
-    // Bairro (obrigatório)
-    
-    // Cidade (obrigatório)
-    cy.get('._7ozb2ub > [name="city"]').type('Fortaleza');
-    
-    // Estado (select - obrigatório)
+    // E clico no botão Checkout
+    cy.url().should('include', '/cart.html');
+    cy.get('[data-test="checkout"]').click();
 
-    // Aguarda o cálculo do frete
-    cy.wait(3000);
+    // E preencho o campo "First Name" com "João"
+    cy.get('[data-test="firstName"]').type('João');
 
-    // Preenche os dados do cartão de crédito
-    // Os campos de cartão estão dentro de iframes (Shopify PCI)
-    // Número do cartão - usa "1" para simular transação aprovada
-    cy.get('iframe[name^="card-fields-number"]')
-      .its('0.contentDocument.body')
-      .should('not.be.empty')
-      .then(cy.wrap)
-      .find('input[name="number"]')
-      .type('1');
+    // E preencho o campo "Last Name" com "Silva"
+    cy.get('[data-test="lastName"]').type('Silva');
 
-    // Data de expiração (qualquer data futura)
-    cy.get('iframe[name^="card-fields-expiry"]')
-      .its('0.contentDocument.body')
-      .should('not.be.empty')
-      .then(cy.wrap)
-      .find('input[name="expiry"]')
-      .type('12/30');
+    // E preencho o campo "Zip/Postal Code" com "12345-678"
+    cy.get('[data-test="postalCode"]').type('12345-678');
 
-    // Código de segurança (qualquer 3 dígitos)
-    cy.get('iframe[name^="card-fields-verification_value"]')
-      .its('0.contentDocument.body')
-      .should('not.be.empty')
-      .then(cy.wrap)
-      .find('input[name="verification_value"]')
-      .type('123');
+    // E clico no botão "Continue"
+    cy.get('[data-test="continue"]').click();
 
-    // Nome no cartão
-    cy.get('iframe[name^="card-fields-name"]')
-      .its('0.contentDocument.body')
-      .should('not.be.empty')
-      .then(cy.wrap)
-      .find('input[name="name"]')
-      .type('João Silva');
+    // Então devo ser direcionado para a página "Checkout: Overview"
+    cy.url().should('include', '/checkout-step-two.html');
+    cy.get('[data-test="title"]').should('have.text', 'Checkout: Overview');
 
-    // Clica no botão "Pay now" para finalizar o pedido
-    cy.get('#checkout-pay-button').click();
+    // E devo visualizar o valor total da compra
+    cy.get('[data-test="total-label"]').should('be.visible').and('contain.text', 'Total:');
 
-    // Aguarda o processamento do pagamento e a confirmação
-    cy.url({ timeout: 20000 }).should('include', '/thank_you');
-    
-    // Verifica se a confirmação do pedido é exibida
-    cy.contains('Thank you', { timeout: 15000 }).should('be.visible');
+    // Quando eu clico no botão "Finish"
+    cy.get('[data-test="finish"]').click();
+
+    // Então devo ser direcionado para a página "Checkout: Complete!"
+    cy.url().should('include', '/checkout-complete.html');
+    cy.get('[data-test="title"]').should('have.text', 'Checkout: Complete!');
+
+    // E devo visualizar a mensagem "Thank you for your order!"
+    cy.get('.complete-header').should('have.text', 'Thank you for your order!');
+
+    // E o ícone do carrinho deve estar vazio (sem o contador numérico)
+    // O contador é o span com data-test="shopping-cart-badge", que deve não existir
+    cy.get('[data-test="shopping-cart-badge"]').should('not.exist');
   });
 
-  it('Cenário: Tentar finalizar compra sem preencher dados obrigatórios', () => {
-    // Não preenche nenhum campo obrigatório
-    // Tenta clicar diretamente no botão "Pay now"
-    cy.get('#checkout-pay-button').click();
+  it('Cenário 02: validação de campo obrigatório no formulário de checkout', () => {
+    // E cliquei no ícone do carrinho e no botão "Checkout"
+    cy.get('[data-test="shopping-cart-link"]').click();
+    cy.get('[data-test="checkout"]').click();
 
-    // O sistema não deve concluir a compra
-    // A URL não deve mudar para a página de confirmação
-    cy.url().should('not.include', '/thank_you');
+    // Quando eu preencho o campo "First Name" com "Maria"
+    cy.get('[data-test="firstName"]').type('Maria');
 
-    // Verifica se as mensagens de erro são exibidas nos campos obrigatórios
-    // Último nome (obrigatório)
-    cy.contains('Enter a last name').should('be.visible');
-    
-    // CEP (obrigatório)
-    cy.contains('Enter a ZIP / postal code').should('be.visible');
-    
-    // Rua (obrigatório)
-    cy.contains('Enter a street name').should('be.visible');
-    
-    // Número do edifício (obrigatório)
-    cy.contains('Enter a building number').should('be.visible');
-    
-    // Bairro (obrigatório)
-    cy.contains('Enter a neighborhood').should('be.visible');
-    
-    // Cidade (obrigatório)
-    cy.contains('Enter a city').should('be.visible');
-    
-    // Estado (obrigatório)
-    cy.contains('Select a state / province').should('be.visible');
+    // E preencho o campo "Last Name" com "Souza"
+    cy.get('[data-test="lastName"]').type('Souza');
 
-    // Também verifica os erros nos campos do cartão de crédito
-    cy.contains('Enter a card number').should('be.visible');
-    cy.contains('Enter a valid expiration date').should('be.visible');
-    cy.contains('Enter the CVV or security code on your card').should('be.visible');
-    cy.contains('Enter your name exactly as it’s written on your card').should('be.visible');
+    // E deixo o campo "Zip/Postal Code" em branco
+    // (Não é necessário ação, apenas não preencher)
+
+    // E clico no botão "Continue"
+    cy.get('[data-test="continue"]').click();
+
+    // Então devo permanecer na página "Checkout: Your Information"
+    cy.url().should('include', '/checkout-step-one.html');
+    cy.get('[data-test="title"]').should('have.text', 'Checkout: Your Information');
+
+    // E devo visualizar uma mensagem de erro informando que o código postal é obrigatório
+    cy.get('[data-test="error"]')
+      .should('be.visible')
+      .and('contain.text', 'Error: Postal Code is required');
+
+    // E o formulário não deve ser enviado para a próxima etapa
+    // A URL já foi validada para garantir que não avançou
   });
+
 });

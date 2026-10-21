@@ -1,0 +1,149 @@
+describe('Carrinho de compras - Swag Labs', () => {
+  const produtos = {
+    mochila: 'Sauce Labs Backpack',
+    bicicleta: 'Sauce Labs Bike Light',
+    camiseta: 'Sauce Labs Bolt T-Shirt',
+    jaqueta: 'Sauce Labs Fleece Jacket',
+    body: 'Sauce Labs Onesie',
+    camisetaVermelha: 'Test.allTheThings() T-Shirt (Red)',
+  };
+
+  beforeEach(() => {
+    cy.visit('https://www.saucedemo.com/');
+    cy.get('[data-test="username"]').should('be.visible');
+    cy.get('[data-test="password"]').should('be.visible');
+
+    cy.get('[data-test="username"]').type('standard_user');
+    cy.get('[data-test="password"]').type('secret_sauce');
+    cy.get('[data-test="login-button"]').click();
+
+    cy.url().should('include', '/inventory.html');
+    cy.get('[data-test="inventory-container"]').should('be.visible');
+  });
+
+  it('Deve exibir a lista de produtos disponíveis', () => {
+    cy.get('[data-test="inventory-item"]')
+      .should('have.length', 6);
+
+    Object.values(produtos).forEach((produto) => {
+      cy.contains('[data-test="inventory-item-name"]', produto)
+        .should('be.visible');
+    });
+  });
+
+  it('Deve adicionar um produto ao carrinho', () => {
+    cy.contains('[data-test="inventory-item"]', produtos.mochila)
+      .should('be.visible')
+      .within(() => {
+        cy.get('button[data-test^="add-to-cart"]')
+          .should('be.visible')
+          .and('not.be.disabled')
+          .click();
+
+        cy.contains('button', 'Remove').should('be.visible');
+      });
+
+    cy.get('[data-test="shopping-cart-badge"]')
+      .should('be.visible')
+      .and('have.text', '1');
+  });
+
+  it('Deve adicionar vários produtos ao carrinho', () => {
+    [produtos.mochila, produtos.bicicleta, produtos.camiseta].forEach(
+      (produto) => {
+        cy.contains('[data-test="inventory-item"]', produto)
+          .within(() => {
+            cy.get('button[data-test^="add-to-cart"]').click();
+            cy.contains('button', 'Remove').should('be.visible');
+          });
+      }
+    );
+
+    cy.get('[data-test="shopping-cart-badge"]')
+      .should('have.text', '3');
+  });
+
+  it('Deve remover um produto do carrinho pela página de produtos', () => {
+    cy.contains('[data-test="inventory-item"]', produtos.mochila)
+      .within(() => {
+        cy.get('button[data-test^="add-to-cart"]').click();
+        cy.contains('button', 'Remove').should('be.visible');
+        cy.contains('button', 'Remove').click();
+        cy.get('button[data-test^="add-to-cart"]').should('be.visible');
+      });
+
+    cy.get('[data-test="shopping-cart-badge"]').should('not.exist');
+  });
+
+  it('Deve abrir o carrinho e exibir os produtos adicionados', () => {
+    [produtos.mochila, produtos.jaqueta].forEach((produto) => {
+      cy.contains('[data-test="inventory-item"]', produto)
+        .within(() => {
+          cy.get('button[data-test^="add-to-cart"]').click();
+        });
+    });
+
+    cy.get('[data-test="shopping-cart-link"]').click();
+
+    cy.url().should('include', '/cart.html');
+    cy.get('[data-test="cart-list"]').should('be.visible');
+
+    cy.contains('[data-test="inventory-item-name"]', produtos.mochila)
+      .should('be.visible');
+
+    cy.contains('[data-test="inventory-item-name"]', produtos.jaqueta)
+      .should('be.visible');
+
+    cy.get('[data-test="cart-list"] > :nth-child(3)').should('be.visible');
+    cy.get('[data-test="cart-list"] > :nth-child(4)').should('be.visible');
+  });
+
+  it('Deve remover um produto de dentro do carrinho', () => {
+    [produtos.mochila, produtos.bicicleta].forEach((produto) => {
+      cy.contains('[data-test="inventory-item"]', produto)
+        .within(() => {
+          cy.get('button[data-test^="add-to-cart"]').click();
+        });
+    });
+
+    cy.get('[data-test="shopping-cart-link"]').click();
+
+    cy.get('[data-test="cart-list"]').should('be.visible');
+    
+    cy.get('[data-test="remove-sauce-labs-backpack"]').click();
+
+    cy.get('[data-test="cart-list"] > :nth-child(4)').should('be.visible');
+  });
+
+  it('Deve ordenar os produtos por nome em ordem decrescente', () => {
+    cy.get('[data-test="product-sort-container"]')
+      .should('be.visible')
+      .select('za');
+
+    cy.get('[data-test="inventory-item-name"]').then(($nomes) => {
+      const nomesExibidos = [...$nomes].map((elemento) =>
+        elemento.textContent.trim()
+      );
+
+      const nomesOrdenados = [...nomesExibidos].sort((a, b) =>
+        b.localeCompare(a)
+      );
+
+      expect(nomesExibidos).to.deep.equal(nomesOrdenados);
+    });
+  });
+
+  it('Deve ordenar os produtos por preço crescente', () => {
+    cy.get('[data-test="product-sort-container"]')
+      .should('be.visible')
+      .select('lohi');
+
+    cy.get('[data-test="inventory-item-price"]').then(($precos) => {
+      const valores = [...$precos].map((elemento) =>
+        Number(elemento.textContent.replace('$', '').trim())
+      );
+
+      expect(valores).to.deep.equal([...valores].sort((a, b) => a - b));
+    });
+  });
+});
