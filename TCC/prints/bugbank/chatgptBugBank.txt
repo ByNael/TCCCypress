@@ -201,7 +201,7 @@ describe('Login de usuário - BugBank', () => {
   });
 });
 
-login corrigido: 
+login corrigido (menos de 5 minutos): 
 describe('Login de usuário - BugBank', () => {
   const email = `teste.${Date.now()}@email.com`;
   const nome = 'Usuário Teste';
